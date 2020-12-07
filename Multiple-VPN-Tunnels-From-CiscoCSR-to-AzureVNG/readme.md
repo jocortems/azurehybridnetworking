@@ -1,4 +1,4 @@
-# Configuring Multiple IPSec VPN Tunnels with BGP Between Cisco CSR 1000v and Azure Virtual Network Gateway
+# Configuring Multiple IPSec VPN Tunnels with BGP Between Cisco CSR 1000v and Azure VPN Gateway
 
 ## Introduction
 
