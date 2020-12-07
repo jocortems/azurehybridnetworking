@@ -1,0 +1,140 @@
+ip vrf OUTSIDE_ONE
+rd 64900:1
+route-target export 64900:1
+route-target import 64900:3
+!
+ip vrf OUTSIDE_TWO
+rd 64900:2
+route-target export 64900:2
+route-target import 64900:3
+!
+ip vrf INSIDE_VRF
+rd 64900:3
+route-target export 64900:3
+route-target import 64900:2
+route-target import 64900:1
+!
+interface GigabitEthernet2
+ip vrf forwarding OUTSIDE_TWO
+ ip address <IP ADDRESS> <MASK>
+ no shutdown
+ exit
+!
+interface GigabitEthernet3
+ip vrf forwarding INSIDE_VRF
+ ip address <IP ADDRESS> <MASK>
+ no shutdown
+ exit
+!
+crypto ikev2 proposal AZURE_PROPOSAL
+  encryption aes-cbc-256 aes-cbc-128 3des
+  integrity sha1
+  group 2
+  exit
+!
+crypto ikev2 policy VRF_OUTSIDE_ONE_POLICY
+  match address local <Gi1 IP ADDRESS>
+  proposal AZURE_PROPOSAL
+  exit
+!
+crypto ikev2 policy VRF_OUTSIDE_TWO_POLICY
+  match fvrf OUTSIDE_TWO
+  match address local <Gi2 IP ADDRESS>
+  proposal AZURE_PROPOSAL
+  exit
+!  
+crypto ikev2 keyring AZURE_KEYRING
+  peer AZURE_VNG
+    address <AZURE VNG VIP>
+    pre-shared-key <PASSWORD>
+    exit
+  exit
+!
+crypto ikev2 profile VRF_OUTSIDE_ONE_PROFILE
+  match address local interface GigabitEthernet1
+  match identity remote address <AZURE VNG VIP>  255.255.255.255
+  authentication remote pre-share
+  authentication local pre-share
+  keyring local AZURE_KEYRING
+  exit
+!
+crypto ikev2 profile VRF_OUTSIDE_TWO_PROFILE
+  match fvrf OUTSIDE_TWO
+  match address local interface GigabitEthernet2
+  match identity remote address <AZURE VNG VIP> 255.255.255.255
+  authentication remote pre-share
+  authentication local pre-share
+  keyring local AZURE_KEYRING
+  exit
+!
+crypto ipsec transform-set AZURE_IPSEC_PROPOSAL esp-aes 256 esp-sha-hmac
+ mode tunnel
+ exit
+
+crypto ipsec profile VRF_OUTSIDE_ONE_PROFILE
+  set transform-set AZURE_IPSEC_PROPOSAL
+  set ikev2-profile VRF_OUTSIDE_ONE_PROFILE
+  set security-association lifetime kilobytes 102400000
+  set security-association lifetime seconds 3600
+ exit
+!
+crypto ipsec profile VRF_OUTSIDE_TWO_PROFILE
+  set transform-set AZURE_IPSEC_PROPOSAL
+  set ikev2-profile VRF_OUTSIDE_TWO_PROFILE
+  set security-association lifetime kilobytes 102400000
+  set security-association lifetime seconds 3600 
+ exit
+!
+!IT IS ASSUMED THAT YOUR PHYSICAL (SUB)INTERFACE BELONGS TO A VRF AS WELL
+interface Tunnel0
+ ip vrf forwarding OUTSIDE_ONE
+ ip unnumbered GigabitEthernet1
+ ip tcp adjust-mss 1350
+ tunnel source GigabitEthernet1
+ tunnel mode ipsec ipv4
+ tunnel destination <AZURE VNG VIP>
+ tunnel vrf OUTSIDE_ONE
+ tunnel protection ipsec profile VRF_OUTSIDE_ONE_PROFILE
+exit
+
+interface Tunnel1
+ ip vrf forwarding OUTSIDE_TWO
+ ip unnumbered GigabitEthernet2
+ ip tcp adjust-mss 1350
+ tunnel source GigabitEthernet2
+ tunnel mode ipsec ipv4
+ tunnel destination <AZURE VNG VIP>
+ tunnel vrf OUTSIDE_TWO
+ tunnel protection ipsec profile VRF_OUTSIDE_TWO_PROFILE
+exit
+!
+ip route vrf OUTSIDE_TWO <AZURE VNG VIP> 255.255.255.255 <DG FOR INTERFACE Gi2>
+ip route vrf INSIDE_VRF <ON PREMISES NETWORK> <NETWORK MASK> <DG FOR INTERFACE Gi3>
+ip route vrf OUTSIDE_ONE <AZURE VNG BGP IP ADDRESS> 255.255.255.255 Tunnel0
+ip route vrf OUTSIDE_TWO <AZURE VNG BGP IP ADDRESS> 255.255.255.255 Tunnel1
+!
+router bgp 64900 
+ bgp log-neighbor-changes
+ no bgp default ipv4-unicast
+ !
+ address-family ipv4 unicast vrf INSIDE_VRF
+  bgp router-id interface GigabitEthernet3
+  redistribute static
+  maximum-paths eibgp 2
+  exit-address-family
+ !
+ address-family ipv4 unicast vrf OUTSIDE_ONE
+  neighbor <AZURE VNG BGP SPEAKER ADDRESS> remote-as 65515
+  neighbor <AZURE VNG BGP SPEAKER ADDRESS> ebgp-multihop 5
+  neighbor <AZURE VNG BGP SPEAKER ADDRESS> update-source Tunnel0
+  neighbor <AZURE VNG BGP SPEAKER ADDRESS> activate
+  exit-address-family
+ !
+ address-family ipv4 unicast vrf OUTSIDE_TWO
+  bgp router-id interface GigabitEthernet2
+  neighbor <AZURE VNG BGP SPEAKER ADDRESS> remote-as 65515
+  neighbor <AZURE VNG BGP SPEAKER ADDRESS> ebgp-multihop 5
+  neighbor <AZURE VNG BGP SPEAKER ADDRESS> update-source Tunnel1
+  neighbor <AZURE VNG BGP SPEAKER ADDRESS> activate
+  exit-address-family
+!
