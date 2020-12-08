@@ -2,15 +2,15 @@
 
 ## Introduction
 
-[Azure VPN Gateways](https://docs.microsoft.com/en-us/azure/vpn-gateway/) support up to 10Gbps of aggregated throughput across a maximum of 30 IPSec tunnels while [Azure Virtual WAN](https://docs.microsoft.com/en-us/azure/virtual-wan/virtual-wan-about) offers up to 20Gbps of aggregated throughput across 2000 IPSec tunnels per virtual hub; however in both cases a single IPSec tunnel cannot exceed 1Gbps of throughput as documented [here](https://docs.microsoft.com/en-us/azure/virtual-wan/virtual-wan-about#what-is-the-total-vpn-throughput-of-a-vpn-tunnel-and-a-connection) and [here](https://docs.microsoft.com/en-us/azure/vpn-gateway/vpn-gateway-about-vpn-gateway-settings#benchmark). Note that is not a limitation in Azure but rather a limitation in all software based IPSec VPN solutions, which means that even if you use your favorite NVA in Azure -or any other Cloud provider by that matter- you will face the same per-tunnel performance cap. This is because of the nature of tunneling; the Virtual Machine's Ethernet interface can only direct incoming packets within a tunnel to a single CPU core, thus the performance is limited to one CPU core regardless of the number of CPU cores and memory available. Additionally, a VPN Gateway can have up to 4 BGP speakers -two BGP speakers per Gateway instance- if it is configured in [active-active mode](https://docs.microsoft.com/en-us/azure/vpn-gateway/vpn-gateway-activeactive-rm-powershell) and **"Custom Azure APIPA BGP IP address"** is configured. These limitations mean that up to 4Gbps of throughput can be achieved between an IPSec VPN appliance on-premises and Azure native IPSec VPN solutions if BGP is used to exchange routing information, which is recommended in most cases.
+[Azure VPN Gateways](https://docs.microsoft.com/en-us/azure/vpn-gateway/) support up to 10Gbps of aggregated throughput across a maximum of 30 IPSec tunnels while [Azure Virtual WAN](https://docs.microsoft.com/en-us/azure/virtual-wan/virtual-wan-about) offers up to 20Gbps of aggregated throughput across 2000 IPSec tunnels per virtual hub; however in both cases a single IPSec tunnel cannot exceed 1Gbps of throughput as documented [here](https://docs.microsoft.com/en-us/azure/virtual-wan/virtual-wan-about#what-is-the-total-vpn-throughput-of-a-vpn-tunnel-and-a-connection) and [here](https://docs.microsoft.com/en-us/azure/vpn-gateway/vpn-gateway-about-vpn-gateway-settings#benchmark). Note that is not a limitation in Azure but rather a limitation in all software based IPSec VPN solutions, which means that even if you use your favorite NVA in Azure -or any other Cloud provider by that matter- you will face the same per-tunnel performance cap. This is because of the nature of tunneling; the Virtual Machine's Ethernet interface can only direct incoming packets within a tunnel to a single CPU core, thus the performance is limited to one CPU core regardless of the number of CPU cores and memory available. Additionally, a VPN Gateway can have up to 4 BGP speakers — two BGP speakers per Gateway instance — if it is configured in [active-active mode](https://docs.microsoft.com/en-us/azure/vpn-gateway/vpn-gateway-activeactive-rm-powershell) and **"Custom Azure APIPA BGP IP address"** is configured. These limitations mean that up to 4Gbps of throughput can be achieved between an IPSec VPN appliance on-premises and Azure native IPSec VPN solutions if BGP is used to exchange routing information, which is recommended in most cases.
 
-The above presents a challenge mainly when there is a requirement to encrypt traffic over ExpressRoute circuits of 5Gpbs and 10Gbps using BGP over IPSec because in order to realize the full available bandwidth of the ExpressRoute circuit over the encrypted channel multiple IPSec VPN appliances are required on-premises.
+The above presents a challenge for example when there is a requirement to encrypt traffic over ExpressRoute circuits of 5Gpbs and 10Gbps using BGP over IPSec because in order to realize the full available bandwidth of the ExpressRoute circuit over the encrypted channel multiple IPSec VPN appliances are required on-premises.
 
 This article explores the use of [VRF Aware IPSec and Front Door VRF](https://www.cisco.com/c/en/us/td/docs/ios-xml/ios/sec_conn_ikevpn/configuration/xe-3s/VRF-Aware_IPsec.html) -a feature introduced by Cisco in IOS release 12.2(15)T to allow for an IPSec tunnel to belong to a different VRF from the endpoints it is encrypting traffic for- to create multiple IPSec tunnels running BGP between a single Cisco CSR 1000v and Azure VPN Gateway, allowing users to have up to 8Gbps between on-premises and Azure VPN Gateway. The reason it is not possible to achieve more than 8Gbps between Azure and on-premises is due to the fact that Azure VPN Gateway only supports up to eight equal cost paths.
 
 ## Setup
 
-Because the use of dot1q sub-interfaces in virtual appliances running in Azure is not allowed and because each tunnel from an Azure VPN Gateway must have a unique tunnel destination and BGP neighbor as defined in the Local Network Gateway Object we are forced to create one NIC per tunnel on the Cisco CSR 1000v; thus for simplicity reasons we will configure the Azure VPN Gateway in active-standby mode, APIPA won't be configured and only two tunnels will be established; however both tunnels on the CSR will have a BGP session to the same BGP speaker on the Azure VPN Gateway.
+A possibility would be having multiple devices on-premises, each of them with a tunnel to the Azure VPN Gateways. The network would load balance traffic between them with ECMP, and that would increase the total available bandwidth. However, this solution would increase costs: instead, we will virtualize the onprem device with VRF technology so that it pretends to be different devices (two in this example). For simplicity reasons we will configure the Azure VPN Gateway in active-standby mode, APIPA won't be configured and only two tunnels will be established; each tunnel on the CSR will have a BGP session to the same BGP speaker on the Azure VPN Gateway.
 
 The following diagram depicts the reference architecture used in this example:
 
@@ -45,7 +45,9 @@ ip vrf INSIDE_VRF
 !
 ```
 
-With the VRFs created we now need to assign the interfaces to their respective VRF. Note that with the Cisco CSR 1000v running in Azure interface `GigabitEthernet 1` must remain in the `Global VRF` because there is a default route configured in the `Global Routing Table` pointing to this interface to allow connectivity from the Internet. However if you are configuring your devices on premises you want to assign each (sub)interface connecting to the Azure VPN Gateway to a VRF for consistency:
+The virtualization of the CSR 1000v in different devices happens only on the Azure-facing side (the `OUTSIDE_ONE` and `OUTSIDE_TWO` "virtual routers" or VRFs), but in the onprem-facing side (`INSIDE`) a single IP is presented. It is like actually having 3 different routers inside of the CSR 1000v, where the `INSIDE` router communicates with `OUTSIDE_ONE` and `OUTSIDE_TWO`.
+
+With the VRFs created we now need to assign the interfaces to their respective VRF. Note that in this particular example we are simulating an onprem device with a Cisco CSR 1000v running in Azure. Hence, the interface `GigabitEthernet 1` must remain in the `Global VRF` because there is a default route configured in the `Global Routing Table` pointing to this interface to allow connectivity from the Internet. However if you are configuring your devices on premises you want to assign each (sub)interface connecting to the Azure VPN Gateway to a VRF for consistency:
 
 ```Bash
 interface GigabitEthernet2
@@ -62,7 +64,7 @@ interface GigabitEthernet3
 !
 ```
 
-We now need to define the IKEv2 and IPSec configuration that we will use to encrypt the traffic over the tunnels. Note that a separate IKEv2 policy, IKEv2 profile and IPSec profile needs to be defined per each VRF excluding the VRF associated with the interface connected to the internal network. Also note how IKEv2 profile `VRF_OUTSIDE_ONE_PROFILE` is missing configuration parameter `match fvrf`; this is because for this example it will use interface `GigabitEthernet 1` for IKEv2 negotiation which belongs to the `Global VRF`:
+We now need to define the IKEv2 and IPSec configuration that we will use to encrypt the traffic over the tunnels. Note that a separate IKEv2 policy, IKEv2 profile and IPSec profile needs to be defined per each VRF excluding the VRF associated with the interface connected to the internal network. Also note how IKEv2 profile `VRF_OUTSIDE_ONE_PROFILE` is missing configuration parameter `match fvrf`; this is because for this example it will use interface `GigabitEthernet 1` for IKEv2 negotiation, which belongs to the `Global VRF`:
 
 ```Bash
 crypto ikev2 proposal AZURE_PROPOSAL
@@ -152,7 +154,7 @@ exit
 !
 ```
 
-Because the source interface for `interface Tunnel1`, `interface GigabitEthernet2`, belongs to VRF `OUTSIDE_TWO` we need to add an static route to the Azure VPN Gateway in this VRF in order to allow IKEv2 negotiation to be successful for this tunnel. We also need an static route for the internal network in VRF `INSIDE_VRF`. Additionally we need one static route in each VRF associated with each tunnel interface to the BGP speaker address of the Azure VPN Gateway in order for the BGP adjacencies to be established:
+Because the source interface for `interface Tunnel1` — `interface GigabitEthernet2` — belongs to VRF `OUTSIDE_TWO`, we need to add a static route to the Azure VPN Gateway in this VRF in order to allow IKEv2 negotiation to be successful for this tunnel. We also need an static route for the internal network in VRF `INSIDE_VRF`. Additionally we need one static route in each VRF associated with each tunnel interface to the BGP speaker address of the Azure VPN Gateway in order for the BGP adjacencies to be established:
 
 ```bash
 ip route vrf OUTSIDE_TWO 23.98.148.37 255.255.255.255 172.16.1.1
@@ -162,7 +164,7 @@ ip route vrf OUTSIDE_TWO 10.0.255.254 255.255.255.255 Tunnel1
 !
 ```
 
-Finally we will configure BGP. Note that even when we don't have any BGP sessions configured under VRF `INSIDE_VRF` we still need to configure an `address-family` for it in order to allow the BGP learned routes from Azure VPN Gateway to be added to the `INSIDE_VRF` routing table as well as to be able to advertise the internal network CIDR(s) to Azure VPN Gateway by redistributing the static route into BGP. Additionally, we need to configure ECMP for the BGP process running for VRF `INSIDE_VRF` in order to leverage all tunnels when sending traffic to Azure and achieve the aggregate throughput we are looking for because there will be multiple entries for the Azure network CIDR(s) in the BGP table of `INSIDE_VRF`, one from VRF `OUTSIDE_ONE` and one from VRF `OUTSIDE_TWO`, and by default BGP best path selection algorithm chooses a single route to insert into the routing table to be used for traffic forwarding. For this example we are configuring `maximum-paths eibgp 2` because we only have two tunnel interfaces, but if you need more than two tunnels make sure to configure accordingly. Also keep in mind that if you have configured multiple BGP speakers on the Azure VPN Gateway you will have multiple tunnels per VRF, in this case you also need to configure ECMP for each `address-family` of the tunnel interfaces to be able to forward traffic to Azure across all tunnels and achieve the desired throughput.
+Finally, we will configure BGP. Note that even when we don't have any BGP sessions configured under VRF `INSIDE_VRF`, we still need to configure an `address-family` for it in order to allow the BGP learned routes from Azure VPN Gateway to be added to the `INSIDE_VRF` routing table, as well as to be able to advertise the internal network CIDR(s) to Azure VPN Gateway by redistributing the static route into BGP. Additionally, we need to configure ECMP for the BGP process running for VRF `INSIDE_VRF` in order to leverage all tunnels when sending traffic to Azure and achieve the aggregate throughput we are looking for because there will be multiple entries for the Azure network CIDR(s) in the BGP table of `INSIDE_VRF`, one from VRF `OUTSIDE_ONE` and one from VRF `OUTSIDE_TWO`, and by default BGP best path selection algorithm chooses a single route to insert into the routing table to be used for traffic forwarding. For this example we are configuring `maximum-paths eibgp 2` because we only have two tunnel interfaces, but if you need more than two tunnels make sure to configure accordingly. Also keep in mind that if you have configured multiple BGP speakers on the Azure VPN Gateway you will have multiple tunnels per VRF, in this case you also need to configure ECMP for each `address-family` of the tunnel interfaces to be able to forward traffic to Azure across all tunnels and achieve the desired throughput.
 
 ```bash
 router bgp 64900 
@@ -195,7 +197,7 @@ router bgp 64900
 
 ## Verifications
 ### Cisco CSR 1000v
-Let's start by verifying that both IPSec tunnels are up. Notice how the tunnel sourced from interface GigabitEthernet1 (Tunnel0) doesn't have a front door VRF (fvrf none) associated with it but its internal VRF is `OUTSIDE_ONE` (ivrf OUTSIDE_ONE) while the tunnel interface sourced from interface GigabitEthernet2 (Tunnel1) has both fvrf and ivrf set as `OUTSIDE_TWO`. This is because we configured `tunnel vrf` for interface Tunnel1 but not for interface Tunnel0:
+Let's start by verifying that both IPSec tunnels are up. Notice how the tunnel sourced from interface GigabitEthernet1 (Tunnel0) doesn't have a front door VRF (fvrf none) associated with it, but its internal VRF is `OUTSIDE_ONE` (ivrf OUTSIDE_ONE). On the other hand, the tunnel interface sourced from interface GigabitEthernet2 (Tunnel1) has both fvrf and ivrf set as `OUTSIDE_TWO`. This is because we configured `tunnel vrf` for interface Tunnel1 but not for interface Tunnel0:
 
 ```bash
 scus-onprem-csr#show crypto ikev2 session
@@ -225,7 +227,7 @@ Child sa: local selector  0.0.0.0/0 - 255.255.255.255/65535
 
 ```
 
-We will now inspect the BGP sessions, we should have two BGP sessions to the same neighbor, one for VRF `OUTSIDE_ONE` and one for VRF `OUTSIDE_TWO` and both should be receiving the same number of prefixes:
+We will now inspect the BGP sessions, we should have two BGP sessions to the same neighbor, one for VRF `OUTSIDE_ONE` and one for VRF `OUTSIDE_TWO`, and both should be receiving the same number of prefixes:
 
 ```bash
 scus-onprem-csr#show ip bgp vpnv4 vrf OUTSIDE_ONE summary              
@@ -313,7 +315,7 @@ B        172.16.1.4/32 [20/0] via 10.0.255.254 (OUTSIDE_ONE), 02:04:21
 B        192.168.255.254 [20/0] via 10.0.255.254 (OUTSIDE_TWO), 02:07:00
 ```
 
-If we inspect the route closer we can see `traffic share count is 1` for each route; this effectively means that traffic arriving at interface GigabitEthernet3 destined to Azure will be load shared across both tunnels:
+If we inspect the route closer we can see `traffic share count is 1` for each route; this effectively means that traffic arriving at interface GigabitEthernet3 destined to Azure will be equally spread across both tunnels (ECMP):
 
 ```bash
 scus-onprem-csr#show ip route vrf INSIDE_VRF 10.0.0.0 255.255.0.0
@@ -431,6 +433,6 @@ Default                Active   25.41.3.0/25        None
 
 ## Conclusion
 
-It is possible to achieve up to 8Gbps between on-premises networks and Azure using a single IPSec VPN appliance on-premises device if it supports Front Door VRF and MP-BGP; however if two IPSec VPN appliances are available -which is recommended for [redundancy purposes](https://docs.microsoft.com/en-us/azure/vpn-gateway/vpn-gateway-highlyavailable#dual-redundancy-active-active-vpn-gateways-for-both-azure-and-on-premises-networks)- it is possible to achieve up to 8Gbps as well by configuring Azure VPN Gateway in active-active mode and using custom BGP APIPA address in addition to the default BGP VNET IP address without all of the configuration overhead associated with using Front Door VRF and MP-BGP.
+It is possible to achieve up to 8Gbps between on-premises networks and Azure using a single IPSec VPN appliance on-premises, if it supports Front Door VRF and MP-BGP; however if two IPSec VPN appliances are available — which is recommended for [redundancy purposes](https://docs.microsoft.com/azure/vpn-gateway/vpn-gateway-highlyavailable#dual-redundancy-active-active-vpn-gateways-for-both-azure-and-on-premises-networks)— it is possible to achieve up to 8Gbps as well by configuring Azure VPN Gateway in active-active mode and using custom BGP APIPA address in addition to the default BGP VNET IP address without all of the configuration overhead associated with using Front Door VRF and MP-BGP.
 
-You can download the parametrized configuration used in this example from this repository [here](CiscoCSR100V_Config.txt), just make sure to adjust to your needs.
+You can download the parametrized configuration used in this example from this repository [here](CiscoCSR100V_Config.txt), just make sure to adjust it to your needs.
