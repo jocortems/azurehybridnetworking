@@ -26,7 +26,7 @@ Although the proposed architecture works it is important to keep in mind the fol
 
 - Although it is possible to advertise route 0.0.0.0/0 from multiple NVAs it is not recommended. The reason is Azure will load share traffic across up to 8 equal cost paths and there is no guarantee of flow symmetry, thus advertising route 0.0.0.0/0 from multiple NVAs can lead to traffic drops because of asymmetric routing
 
-- Traffic between the virtual hub and the NVA will be charged according to our inter region bandwidth charges which you can consult [here](https://azure.microsoft.com/pricing/details/bandwidth/)
+- Traffic between the virtual hub and the NVA will be billed according to our inter region bandwidth charges which you can consult [here](https://azure.microsoft.com/pricing/details/bandwidth/)
 
 - You cannot advertise route 0.0.0.0/0 using Azure native VPN Gateway. If your NVA doesn't support BGP, or if you need more than 2.5Gbps of throughput (2 tunnels) and your NVA doesn't support Front Door VRF and MP-BGP, you can use a separate NVA -like Cisco CSR 1000v or Arista vEOS Router- to establish the IPSec tunnels and BGP routing to the virtual hub and send all traffic to your firewall NVA
 
