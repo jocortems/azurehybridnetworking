@@ -30,6 +30,8 @@ Although the proposed architecture works it is important to keep in mind the fol
 
 - You cannot advertise route 0.0.0.0/0 using Azure native VPN Gateway. If your NVA doesn't support BGP, or if you need more than 2.5Gbps of throughput (2 tunnels) and your NVA doesn't support Front Door VRF and MP-BGP, you can use a separate NVA -like Cisco CSR 1000v or Arista vEOS Router- to establish the IPSec tunnels and BGP routing to the virtual hub and send all traffic to your firewall NVA
 
+- Advertising route 0.0.0.0/0 to a [Global Reach](https://docs.microsoft.com/azure/expressroute/expressroute-global-reach) enabled ExpressRoute branch will propagate the route to all other Global Reach enabled ExpressRoute branches connected to the same hub; this happens because Azure Virtual WAN advertises the routes to the Microsoft ExpressRoute Edge Routers, which in turn propagate those routes to all ExpressRoute sites interconnected via Global Reach. If you need to prevent any of those Global Reach enabled ExpressRoute branches from learning the default route you must filter it using your local router's BGP features. If any of those branches are another Azure VNET you need to create a route table with route 0.0.0.0/0 and next hop of Internet and apply it to all subnets in the VNET and any peered VNETs
+
 ## Conclusion
 
 It is possible to use an NVA to inspect Internet bound traffic from Azure Virtual WAN by treating it like an additional branch and advertising a default route to a virtual hub. Just keep in mind the considerations listed in this article.
