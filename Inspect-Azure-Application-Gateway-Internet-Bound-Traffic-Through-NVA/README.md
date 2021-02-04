@@ -62,10 +62,13 @@ APPGW-ROUTE-TABLE | GatewayManager.SouthCentralUS | Internet
 UPPER-HALF | 0.0.0.0/1 | 10.255.250.4
 LOWER-HALF | 128.0.0.0/1 | 10.255.250.4
 
-This route table can now be associated with Application Gateway Subnet, forcing inspection of all user traffic through our firewall while allowing control plane traffic to flow directly to the Internet without breaking Application Gateway
+This route table can now be associated with Application Gateway Subnet, forcing inspection of all user traffic through our firewall while allowing control plane traffic to flow directly to the Internet without breaking Application Gateway.
 
 >[!NOTE]
-GatewayManager service tag is regional, you only need to allow the tag for the region where your Application Gateway is deployed. You can consult the full list of service tags available [here](https://www.microsoft.com/en-us/download/details.aspx?id=56519). You can also use CLI command [az network list-service-tags](https://docs.microsoft.com/en-us/cli/azure/network?view=azure-cli-latest#az_network_list_service_tags) or PowerShell command [Get-AzNetworkServiceTag](https://docs.microsoft.com/en-us/powershell/module/az.network/get-aznetworkservicetag?view=azps-5.4.0) to filter for specific service tags
+In order to avoid breaking communication due to asymmetric routing it is important that Internet clients connect to the public IP address of the NVA rather than to the Application Gateway directly and configure Destination NAT on the NVA to the private IP address of Azure Application Gateway. This architecture is discussed in detail [here](https://docs.microsoft.com/azure/architecture/example-scenario/gateway/firewall-application-gateway#application-gateway-after-firewall)
+
+>[!NOTE]
+GatewayManager service tag is regional, you only need to allow the tag for the region where your Application Gateway is deployed. You can consult the full list of service tags available [here](https://www.microsoft.com/download/details.aspx?id=56519). You can also use CLI command [az network list-service-tags](https://docs.microsoft.com/cli/azure/network?view=azure-cli-latest#az_network_list_service_tags) or PowerShell command [Get-AzNetworkServiceTag](https://docs.microsoft.com/powershell/module/az.network/get-aznetworkservicetag?view=azps-5.4.0) to filter for specific service tags
 
 ## Conclusion
 
