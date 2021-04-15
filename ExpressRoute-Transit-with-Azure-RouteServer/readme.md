@@ -47,7 +47,7 @@ It is possible to achieve transit across multiple circuits up to the [maximum of
 
 - Only one ExpressRoute circuit can be left without configuring Site-to-Site VPN on top of it
 
-- Transit from on-premises to only one of AVS, HLI or OCI is supported
+- Transit from on-premises to only one of AVS, HLI or OCI is supported. This is because AVS and HLI don't support connectivity via IPSec, and OCI doesn't support IPSec over [FastConnect Private Peering](https://docs.oracle.com/iaas/Content/Network/Concepts/fastconnectoverview.htm#FastConnect_Overview)
 
 - Traffic between on-premises branches cannot be filtered nor inspected in Azure
 
@@ -87,7 +87,7 @@ Azure virtual WAN natively provides transit between on-premises branches, be it 
 
 - Only one ExpressRoute circuit can be left without configuring Site-to-Site VPN on top of it across all virtual hubs
 
-- Transit from on-premises to only one of AVS, HLI or OCI is supported across all virtual hubs
+- Transit from on-premises to only one of AVS, HLI or OCI is supported across all virtual hubs. This is because AVS and HLI don't support connectivity via IPSec, and OCI doesn't support IPSec over [FastConnect Private Peering](https://docs.oracle.com/iaas/Content/Network/Concepts/fastconnectoverview.htm#FastConnect_Overview)
 
 - Traffic between on-premises branches cannot be filtered nor inspected in Azure
 
@@ -123,7 +123,7 @@ It is possible to achieve transit across multiple circuits up to the [maximum of
 
 - Only one ExpressRoute circuit can be left without configuring IPSec VPN or VxLAN on top of it
 
-- Transit from on-premises to only one of AVS, HLI or OCI is supported
+- Transit from on-premises to only one of AVS, HLI or OCI is supported. This is because AVS and HLI don't support connectivity via IPSec, and OCI doesn't support IPSec over [FastConnect Private Peering](https://docs.oracle.com/iaas/Content/Network/Concepts/fastconnectoverview.htm#FastConnect_Overview)
 
 - Increased latency because of the tunnel overhead
 
