@@ -1,4 +1,4 @@
-# Using Azure Route Server to Achieve Transit Between ExpressRoute Circuits
+# Enable Transit Between ExpressRoute Circuits without Using Global Reach
 
 [ExpressRoute Global Reach](https://docs.microsoft.com/azure/expressroute/expressroute-global-reach) allows branches connected to Azure via ExpressRoute circuits to communicate with each other using [Microsoft global network](https://docs.microsoft.com/azure/networking/microsoft-global-network); however there are some limitations with it:
 
@@ -11,7 +11,6 @@ These limitations can be problematic when, for example, there is a requirement t
 
 This article offers a set of reference architectures to enable transit between ExpressRoute circuits leveraging [Azure Route Server](https://docs.microsoft.com/azure/route-server/overview) and [Azure Virtual WAN](https://docs.microsoft.com/azure/virtual-wan/). In order to keep it succinct no configuration examples are provided, but rather the advantages and disadvantages of each design are discussed.
 
-> IMPORTANT:
 > Although these patterns have been personally validated and tested there are no guarantees Microsoft will support them.
 
 ## 1. Single Region – IPSec VPN over ExpressRoute Private Peering using Azure VPN Gateway
@@ -38,6 +37,8 @@ It is possible to achieve transit across multiple circuits up to the [maximum of
 
 - Static route IPSec tunnels can be used. BGP is not needed but is recommended
 
+- [ExpressRoute FastPath](https://docs.microsoft.com/azure/expressroute/about-fastpath) can be enabled for improved performance
+
 **Disadvantages:**  
 
 - Only supported in [Azure regions with availability zones](https://docs.microsoft.com/azure/availability-zones/az-region#azure-regions-with-availability-zones)
@@ -62,7 +63,7 @@ It is possible to achieve transit across multiple circuits up to the [maximum of
 
 > Microsoft has disabled VPN to ExpressRoute transit in Azure virtual WAN for regions where Global Reach is not available due to regulatory compliance reasons.
 
-[Azure virtual WAN](https://docs.microsoft.com/azure/virtual-wan/virtual-wan-about) natively provides transit between on-premises branches, be it Site-to-Site, Point-to-Site or ExpressRoute, either within a region or across regions; however transit between ExpressRoute circuits still requires Global Reach to be enabled. By configuring Site-to-Site VPN over ExpressRoute private peering it is possible to achieve transit across ExpressRoute circuits; the added benefit of this pattern is it can be extended to support multi-region designs by deploying virtual hubs in different regions. Finally, Site-to-Site VPN over ExpressRoute private peering in virtual WAN is not limited to Azure regions that support availability zones.
+Azure virtual WAN natively provides transit between on-premises branches, be it Site-to-Site, Point-to-Site or ExpressRoute, either within a region or across regions; however transit between ExpressRoute circuits still requires Global Reach to be enabled. By configuring Site-to-Site VPN over ExpressRoute private peering it is possible to achieve transit across ExpressRoute circuits; the added benefit of this pattern is it can be extended to support multi-region designs by deploying virtual hubs in different regions. Finally, Site-to-Site VPN over ExpressRoute private peering in virtual WAN is not limited to Azure regions that support availability zones.
 
 **Advantages:**
 
@@ -113,6 +114,8 @@ It is possible to achieve transit across multiple circuits up to the [maximum of
 - Supported across all Azure regions
 
 - Traffic between on-premises branches can be filtered and inspected at the NVA
+
+- [ExpressRoute FastPath](https://docs.microsoft.com/azure/expressroute/about-fastpath) can be enabled for improved performance
 
 **Disadvantages:**  
 
@@ -166,11 +169,13 @@ This pattern allows on-premises branches in any Azure region, regardless of the 
 
 - Traffic between on-premises branches can be filtered and inspected at the NVAs
 
-- Traffic between on-premises branches can be filtered using [network security groups](https://docs.microsoft.com/azure/virtual-network/network-security-groups-overview) at the NVA NICs subnets if no IPSec or VxLAN tunnels are used
+- Traffic between on-premises branches can be filtered using [network security groups](https://docs.microsoft.com/azure/virtual-network/network-security-groups-overview) at the NVA NICs subnets facing Azure Route Server if no IPSec or VxLAN tunnels are used
 
 - ExpressRoute circuits can be [Local SKU](https://docs.microsoft.com/azure/expressroute/expressroute-faqs#what-is-expressroute-local)
 
 - Throughput is not constrained by tunnels
+
+- [ExpressRoute FastPath](https://docs.microsoft.com/azure/expressroute/about-fastpath) can be enabled for improved performance
 
 **Disadvantages:**  
 
@@ -229,6 +234,10 @@ This pattern allows on-premises branches in any Azure region to communicate betw
 - Route tables are not required
 
 - It can scale to support multiple VNETs
+
+- Traffic between on-premises branches can be filtered using [network security groups (NSGs)](https://docs.microsoft.com/azure/virtual-network/network-security-groups-overview) at the NVA NICs subnets facing Azure Route Server if no IPSec or VxLAN tunnels are used for multi-NIC NVAs. For single-NIC NVAs the NSG can be applied in the NVA NIC subnet if no IPSec or VxLAN tunnels are used for multi-NIC NVAs
+
+- [ExpressRoute FastPath](https://docs.microsoft.com/azure/expressroute/about-fastpath) can be enabled for improved performance
 
 **Disadvantages:**  
 
