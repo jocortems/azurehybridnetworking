@@ -35,6 +35,9 @@ Even though Gateway Manager has a public IP address and is considered to be on t
 
 ## Configuration
 
+> [!Note]
+> The configuration presented in this article will hinder the ability to monitor the health status of Application Gateway, this is because Application Gateway has additional dependencies other than Gateway Manager, and those dependencies don't have a stable IP address nor are associated with a service tag. Data path won't be impacted, but telemetry will be broken.
+
 >[!NOTE]
 The configuration presented in this article uses a feature which is currently in Private Preview. Although there is no need to whitelist your subscription to be able to use it and is available in all Azure commercial regions it is still governed by the [Supplemental Terms of Use for Microsoft Azure Previews](https://azure.microsoft.com/en-us/support/legal/preview-supplemental-terms/)
 
