@@ -1,5 +1,8 @@
 # Inspecting Internet Bound Traffic Through an NVA in Azure Virtual WAN
 
+> [!Note]
+> Azure virtual WAN now supports configuring a static default route in the vhub route tables pointing to a VNET connection and NVA. For more information refer to the official Azure Virtual WAN documentation [here](https://docs.microsoft.com/en-us/azure/virtual-wan/scenario-route-through-nvas-custom)
+
 ## Introduction
 
 Currently Azure Virtual WAN doesn't allow a default route through an NVA to be configured in the virtual hub as documented [here](https://docs.microsoft.com/en-us/azure/virtual-wan/scenario-route-through-nvas-custom#workflow), which means that if you require to inspect outbound Internet traffic the only options are to deploy a [secured virtual hub](https://docs.microsoft.com/en-us/azure/firewall-manager/secured-virtual-hub) and use [Azure Firewall](https://docs.microsoft.com/en-us/azure/firewall/overview) in conjunction with [Azure Firewall Manager](https://docs.microsoft.com/en-us/azure/firewall-manager/overview), or leverage one of our [Security Partner Providers](https://docs.microsoft.com/en-us/azure/firewall-manager/trusted-security-partners). Depending on your security policies this might not be enough, but that doesn't mean you cannot use Azure Virtual WAN and still be able to inspect Internet bound traffic using your NVA of choice. In this article we will explore an option to inspect outbound Internet traffic through an NVA in Azure Virtual WAN.
