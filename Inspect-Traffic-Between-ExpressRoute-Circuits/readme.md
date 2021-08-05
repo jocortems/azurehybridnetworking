@@ -48,7 +48,6 @@ The main goal of UDRs is to overwrite the routes injected by the Azure Route Ser
   - Default route (0.0.0.0/0), to overwrite the system route
   - Local VNet (10.0.0.0/16), to overwrite the system route
   - All directly peered VNets (10.1.0.0/16, 10.2.0.0/16, 172.16.0.0/16), to overwrite the system routes
-  - Summary networks being advertised from the peer router NVAs to Azure Route Server in UNTRUSTED-VNET. In the example above this is RFC1918 supernets 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16. In principle this route would not be required, since the default 0.0.0.0/0 would catch this traffic, but it is recommended for maintainability
 - Another route table is configured for the GatewaySubnet. Gateway route propagation is enabled (otherwise that would break correct forwarding) and the following routes are configured:
   - Summary networks being advertised from the peer router NVAs to Azure Route Server in UNTRUSTED-VNET pointing to the IP address of FW-ILB. In the example above this is RFC1918 supernets 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16
   - Local VNET (10.0.0.0/16) pointing to the IP address of FW-ILB, to overwrite the system route
@@ -111,7 +110,6 @@ In addition to the UDR requirements for [Single DMZ pattern](#Single-DMZ---UDR-C
   - Default route (0.0.0.0/0), to overwrite the system route
   - Local VNET (172.16.0.0/16), to overwrite the system route
   - All directly peered VNETs (172.17.0/16, 172.18.0.0/16, 10.0.0.0/16), to overwrite the system routes
-  - Summary networks being advertised from the peer firewall NVAs to Azure Route Server in DMZ-VNET. In the example above this is RFC1918 supernets 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16
 - A route table is configured for the GatewaySubnet. Gateway route propagation is enabled (otherwise traffic to on-premises is broken) and the following routes are configured:
   - Summary networks being advertised from the peer firewall NVAs to Azure Route Server in DMZ-VNET pointing to the IP address of UNTRUSTED-ILB. In the example above this is RFC1918 supernets 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16  
   - Local VNET (172.16.0.0/16) pointing to the IP address of UNTRUSTED-ILB, to overwrite the system route
@@ -156,7 +154,7 @@ Another variation of the single DMZ design is where the firewall NVAs in the fir
 > [!NOTE]
 > [Azure virtual WAN](https://docs.microsoft.com/azure/virtual-wan/virtual-wan-about) is offering a managed preview that provides traffic inspection between ExpressRoute branches using Azure Firewall with [secured virtual hub](https://docs.microsoft.com/azure/firewall-manager/secured-virtual-hub). If you are planning on using Azure Firewall to inspect your traffic the recommendation is to use Azure virtual WAN. Contact your Microsoft representative to get additional information about this managed preview
 
-This pattern is very similar to pattern [Single DMZ](#1.-Single-DMZ), however because Azure Firewall doesn't integrate with Azure Route Server and doesn't support BGP, an additional set of router NVAs is required in the VNET where the Azure Firewall is deployed. These routers facilitate route injection into ExpressRoute, and route tables are used to send the traffic to Azure Firewall rather than through the routers. Furthermore, if Internet breakout for on premises through Azure Firewall is not required, neither application nor user data traffic will flow through these routers, making them a purely control plane component.
+This pattern is very similar to pattern [Single DMZ](#1.-Single-DMZ), however because Azure Firewall doesn't integrate with Azure Route Server and doesn't support BGP, an additional set of router NVAs is required in the VNET where Azure Firewall is deployed. These routers facilitate route injection into ExpressRoute, and route tables are used to send the traffic to Azure Firewall rather than through the routers. Furthermore, if Internet breakout for on premises through Azure Firewall is not required, neither application nor user data traffic will flow through these routers, making them a purely control plane component.
 
 Following are the requirements to implement this pattern.
 
