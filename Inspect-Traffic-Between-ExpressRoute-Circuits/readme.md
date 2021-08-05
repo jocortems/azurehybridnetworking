@@ -73,6 +73,7 @@ The main goal of Azure Load Balancers are deployed to provide traffic symmetry, 
 
 - Two internal load balancers are required to provide redundancy for the NVAs and avoid traffic black holing. One for the firewall NVAs and another for the router NVAs
 - The load balancers are configured with High Availability ports to guarantee flow symmetry and allow all protocol's traffic
+- The load balancer in front of the router NVAs is only used as next hop of an UDR in the firewall NVA subnet. UDRs are required because otherwise the routes injected by the Azure Route Server in that subnet would cause a routing loop, and by using the load balancer as next hop the setup provides resiliency against router NVA failures
 - It is recommended to configure a TCP probe for BGP port (TCP 179), this is to ensure that traffic will only be sent to the NVA if the BGP process is running and avoid traffic black holing in case the NVA is running but BGP is not
 
 ### Single DMZ - Limitations
